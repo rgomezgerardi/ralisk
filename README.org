@@ -5,18 +5,40 @@
 
 Ralisk it's an [[https://archlinux.org][Arch Linux]] installation script design to be fast and simple.
 
-For doing that ralisk install and configure the minimum elements necessarys to have a functional OS, that means that you will get almost nothing at all, internet access, vi, and [[file:./TANGLE.org][some other stuff]], but escencilly a black screen. You can change this and some other stuff by modifying the [[file:./config][config]] and [[file:./packages][packages]] files.
+For doing that ralisk install and configure the minimum elements necessarys to have a functional OS, that means that you will get almost nothing at all, internet access, vi, and [[file:./TANGLE.org][some other stuff]], but escencilly a black screen. You can change this and some other things by modifying the [[file:./config][config]] and [[file:./packages][packages]] files.
 
-* Obtaing
+* Obtain
+Fast
+** Method 1: git
 
 #+begin_src shell
-curl -sLO https://raw.githubusercontent.com/rgomezgerardi/ralisk/main/ralisk | bash
+
+#+end_src
+
+** Method 2: very good
+
+#+begin_src shell
+
+#+end_src
+
+** Method 3: raw
+
+#+begin_src shell
+curl -LO 'https://gitlab.com/rgomezgerardi/ralisk/-/raw/main/install' | bash
+#+end_src
+
+|-
+| Method | 
+* Runing
+Simple
+
+#+begin_src shell
+./ralisk
 #+end_src
 
 * Credit
-Inspired by pico-dev/alis and codigocristo/arcris, so if you are searching for arch linux installation script make sure to take a look at those.
+Inspired by hispanic [[https://github.com/picodotdev/alis][pico-dev/alis]] and [[https://github.com/CodigoCristo/arcris][codigocristo/arcris]] arch linux installation script's, so make sure to take a look at those.
 
 * Contact
-
-[[https://rgomezgerardi.cf][Website]] 
+[[https://rgomezgerardi.cf][Website]] \\
 [[https://mail.google.com/mail/?view=cm&to=rgomezgerardi@gmail.com&su=Ralisk+-+][Gmail]]

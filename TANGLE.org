@@ -3,7 +3,6 @@
 #+EMAIL: rgomezgerardi@gmail.com
 #+PROPERTY: header-args :noweb strip-export :cache yes :shebang "#!/usr/bin/env bash"
 
-
 * Installation
 :PROPERTIES:
 :header-args: :tangle ralisk :tangle-mode (identity #o744)
