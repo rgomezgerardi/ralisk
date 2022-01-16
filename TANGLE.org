@@ -1,28 +1,49 @@
-#+TITLE:Ralisk
+#+TITLE: Ralisk
 #+AUTHOR: Ricardo Gomez
 #+EMAIL: rgomezgerardi@gmail.com
-#+PROPERTY: header-args :noweb strip-export :cache yes :shebang "#!/usr/bin/env bash"
+#+PROPERTY: header-args :tangle ralisk :tangle-mode (identity #o744) :noweb strip-export :cache yes :shebang "#!/usr/bin/env bash"
 
-* Installation
-:PROPERTIES:
-:header-args: :tangle ralisk :tangle-mode (identity #o744)
-:END:
 
-** Custom Variables
-
-#+begin_src shell
-#+end_src
-
-** Variables
+* Variables
 
 #+begin_src shell
 dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
+folder="ralisk"
+disk="/dev/sda"
+root="/dev/sda4"
+mount_point="/mnt"
+# reflector -a 48 -c $iso -f 5 -l 20 --sort rate --save /etc/pacman.d/mirrorlist
+reflector_command="reflector --latest 20 --sort rate /etc/pacman.d/mirror"
+region="America"
+city="Caracas"
+locale="en_US.UTF-8"
+keymap="de-latin1"
+hostname="arch"
+permanent_ip="127.0.1.1"
+domain="localdomain"
+boot_directory="/boot/grub"
+# memory_check_command=$(swapon --show)
+memory_total=$(awk '/MemTotal/{print $2}' /proc/meminfo)
+swap_size=1024
+swap_path="/mnt/opt/swap"
+swap_file="/mnt/opt/swap/swapfile"
 #+end_src
 
-** Partition the disks
+* Download 
+  
+#+begin_src shell
+if ! [ -d "../$folder" ]; then
+	mkdir --parents "$folder" 
+	curl -sL 'https://gitlab.com/rgomezgerardi/ralisk/-/archive/main/ralisk-main.tar.gz' | tar --extract --gzip --directory "$folder" --strip-components 1 --file -
+	# chmod +x "$dir/ralisk"
+	echo "ralisk downloaded"
+	exit 0
+fi
+#+end_src
+
+* Partition the disks
 
 #+begin_src shell
-disk="/dev/sda"
 read -p "Partition Number: " partition_number
 read -p "Partition Size: " partition_size
 parted_command="parted -s "$disk" -- rm $partition_number mkpart primary -$partition_size -1s set 4 boot on"
@@ -44,26 +65,21 @@ if [[ ! -d "/sys/firmware/efi" ]]; then
 fi
 #+end_src
 
-** Formatting
+* Formatting
 
 #+begin_src shell
-root="/dev/sda4"
 mkfs.ext4 "$root"
 #+end_src
 
-** Mounting
+* Mounting
 
 #+begin_src shell
-mount_point="/mnt"
 mount "$root" "$mount_point"
 #+end_src
 
-** Mirrors
+* Mirrors
 
 #+begin_src shell
-# reflector -a 48 -c $iso -f 5 -l 20 --sort rate --save /etc/pacman.d/mirrorlist
-reflector_command="reflector --latest 20 --sort rate /etc/pacman.d/mirror"
-
 # timedatectl set-ntp true
 
 sed -i 's/#Color/Color/' /etc/pacman.conf  # Enable color
@@ -81,43 +97,33 @@ cp /mnt/etc/pacman.d/mirrorlist /mnt/etc/pacman.d/mirrorlist.bak
 cp /etc/pacman.d/mirrorlist /mnt/etc/pacman.d/mirrorlist
 #+end_src
 
-** Time zone
+* Time zone
 
 #+begin_src shell
-region="America"
-city="Caracas"
-
 ln -sf "$mount_point/usr/share/zoneinfo/$region/$city" "$mount_point/etc/localtime"
 arch-chroot "$mount_point" hwclock --systohc
 #+end_src
 
-** Localization
+* Localization
 
 
 #+begin_src shell
-locale="en_US.UTF-8"
-keymap="de-latin1"
-
 sed -i 's/^#$locale/$locale/' "$mount_point/etc/locale.gen"
 arch-chroot "$mount_point" locale-gen
 printf "LANG=$locale" >> "$mount_point/etc/locale.conf"
 printf "KEYMAP=$keymap" >> "$mount_point/etc/vconsole.conf"
 #+end_src
 
-** Create the hostname file
+* Create the hostname file
    
 #+begin_src shell
-hostname="arch"
-permanent_ip="127.0.1.1"
-domain="localdomain"
-
 printf "$hostname" >> "$mount_point/etc/hostname"
 
 # Local hostname resolution
 printf "127.0.0.1\tlocalhost\n::1\t\tlocalhost\n$permanent_ip\t$hostname.$domain\t$hostname" >> /etc/hosts
 #+end_src
 
-** Install essential packages
+* Install essential packages
 
 #+begin_src shell
 pkgs=(
@@ -142,49 +148,36 @@ pkgs=(
 pacstrap "$mount_point" "${pkgs[@]}" --noconfirm --needed
 #+end_src
 
-** Enable Services
+* Enable Services
 
 #+begin_src shell
 arch-chroot "$mount_point" systemctl enable NetworkManager
 # systemctl enable bluetooth
 #+end_src
 
-** Root password
+* Root password
 
 #+begin_src shell
 arch-chroot "$mount_point" passwd
 #+end_src
 
-** Bootloader
+* Bootloader
 
 #+begin_src shell
-boot_directory="/boot/grub"
-
 arch-chroot "$mount_point" grub-install --target i386-pc --boot-directory "$boot_directory" "$disk"
 arch-chroot "$mount_point" grub-mkconfig -o /boot/grub/grub.cfg
 #+end_src
 
-** Fstab
+* Fstab
 
 #+begin_src shell
 genfstab -U "$mount_point" >> "$mount_point/etc/fstab"
 #+end_src
 
-** Swap
+* Swap
 
 #+begin_src shell
-# Check for low memory systems
-# memory_check=$(swapon --show)
-memory_total=$(awk '/MemTotal/{print $2}' /proc/meminfo)
-swap_size=1024
-swap_path="/mnt/opt/swap"
-swap_file="/mnt/opt/swap/swapfile"
-
-# if ! memory_check; then 
-   # printf "Look's like you already create a swap, good for you"
-# fi
-
-if [  $memory_total -lt 8000000 ]; then  # < 8GB
+if [  $memory_total -lt 8000000 ]; then  # Check for memory < 8GB
     mkdir "$swap_path"
 	dd if=/dev/zero of="$swap_path" bs=1M count="$swap_size" status=progress
     chmod 600 "$swap_file"
@@ -195,7 +188,7 @@ if [  $memory_total -lt 8000000 ]; then  # < 8GB
 fi
 #+end_src
 
-** Reboot
+* Reboot
 
 #+begin_src shell
 umount -R "$mount_point"
