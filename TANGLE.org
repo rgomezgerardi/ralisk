@@ -1,0 +1,205 @@
+#+TITLE:Ralisk
+#+AUTHOR: Ricardo Gomez
+#+EMAIL: rgomezgerardi@gmail.com
+#+PROPERTY: header-args :noweb strip-export :cache yes :shebang "#!/usr/bin/env bash"
+
+
+* Installation
+:PROPERTIES:
+:header-args: :tangle ralisk :tangle-mode (identity #o744)
+:END:
+
+** Custom Variables
+
+#+begin_src shell
+#+end_src
+
+** Variables
+
+#+begin_src shell
+dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
+#+end_src
+
+** Partition the disks
+
+#+begin_src shell
+disk="/dev/sda"
+read -p "Partition Number: " partition_number
+read -p "Partition Size: " partition_size
+parted_command="parted -s "$disk" -- rm $partition_number mkpart primary -$partition_size -1s set 4 boot on"
+"$parted_command"
+#+end_src
+
+*** COMMENT sgdisk
+
+#+begin_src shell
+#sgdisk -Z ${DISK} # zap all on disk
+#sgdisk -a 2048 -o ${DISK} # new gpt disk 2048 alignment
+
+# create partitions
+sgdisk -n 1::+1M --typecode=1:ef02 --change-name=1:'BIOSBOOT' ${DISK} # partition 1 (BIOS Boot Partition)
+sgdisk -n 2::+100M --typecode=2:ef00 --change-name=2:'EFIBOOT' ${DISK} # partition 2 (UEFI Boot Partition)
+sgdisk -n 3::-0 --typecode=3:8300 --change-name=3:'ROOT' ${DISK} # partition 3 (Root), default start, remaining
+if [[ ! -d "/sys/firmware/efi" ]]; then
+    sgdisk -A 1:set:2 ${DISK}
+fi
+#+end_src
+
+** Formatting
+
+#+begin_src shell
+root="/dev/sda4"
+mkfs.ext4 "$root"
+#+end_src
+
+** Mounting
+
+#+begin_src shell
+mount_point="/mnt"
+mount "$root" "$mount_point"
+#+end_src
+
+** Mirrors
+
+#+begin_src shell
+# reflector -a 48 -c $iso -f 5 -l 20 --sort rate --save /etc/pacman.d/mirrorlist
+reflector_command="reflector --latest 20 --sort rate /etc/pacman.d/mirror"
+
+# timedatectl set-ntp true
+
+sed -i 's/#Color/Color/' /etc/pacman.conf  # Enable color
+sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf  # Enable parallel downloads
+sed -i "/\[multilib\]/,/Include/"'s/^#//' /etc/pacman.conf  # Enable multilib
+
+# Backup of mirror list
+cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.bak
+cp /mnt/etc/pacman.d/mirrorlist /mnt/etc/pacman.d/mirrorlist.bak
+
+# Update the mirror list
+"$reflector_command"
+
+# Copy new mirror list to file system
+cp /etc/pacman.d/mirrorlist /mnt/etc/pacman.d/mirrorlist
+#+end_src
+
+** Time zone
+
+#+begin_src shell
+region="America"
+city="Caracas"
+
+ln -sf "$mount_point/usr/share/zoneinfo/$region/$city" "$mount_point/etc/localtime"
+arch-chroot "$mount_point" hwclock --systohc
+#+end_src
+
+** Localization
+
+
+#+begin_src shell
+locale="en_US.UTF-8"
+keymap="de-latin1"
+
+sed -i 's/^#$locale/$locale/' "$mount_point/etc/locale.gen"
+arch-chroot "$mount_point" locale-gen
+printf "LANG=$locale" >> "$mount_point/etc/locale.conf"
+printf "KEYMAP=$keymap" >> "$mount_point/etc/vconsole.conf"
+#+end_src
+
+** Create the hostname file
+   
+#+begin_src shell
+hostname="arch"
+permanent_ip="127.0.1.1"
+domain="localdomain"
+
+printf "$hostname" >> "$mount_point/etc/hostname"
+
+# Local hostname resolution
+printf "127.0.0.1\tlocalhost\n::1\t\tlocalhost\n$permanent_ip\t$hostname.$domain\t$hostname" >> /etc/hosts
+#+end_src
+
+** Install essential packages
+
+#+begin_src shell
+pkgs=(
+	base
+	linux
+	linux-firmware
+	# ntfs-3g
+	# os-prober
+	grub
+	# nano
+	# vim
+	# neovim
+	# networkmanager
+	# reflector
+	sudo
+	# archlinux-keyring
+	# wget
+	# libnewt
+	# dhclient
+)
+
+pacstrap "$mount_point" "${pkgs[@]}" --noconfirm --needed
+#+end_src
+
+** Enable Services
+
+#+begin_src shell
+arch-chroot "$mount_point" systemctl enable NetworkManager
+# systemctl enable bluetooth
+#+end_src
+
+** Root password
+
+#+begin_src shell
+arch-chroot "$mount_point" passwd
+#+end_src
+
+** Bootloader
+
+#+begin_src shell
+boot_directory="/boot/grub"
+
+arch-chroot "$mount_point" grub-install --target i386-pc --boot-directory "$boot_directory" "$disk"
+arch-chroot "$mount_point" grub-mkconfig -o /boot/grub/grub.cfg
+#+end_src
+
+** Fstab
+
+#+begin_src shell
+genfstab -U "$mount_point" >> "$mount_point/etc/fstab"
+#+end_src
+
+** Swap
+
+#+begin_src shell
+# Check for low memory systems
+# memory_check=$(swapon --show)
+memory_total=$(awk '/MemTotal/{print $2}' /proc/meminfo)
+swap_size=1024
+swap_path="/mnt/opt/swap"
+swap_file="/mnt/opt/swap/swapfile"
+
+# if ! memory_check; then 
+   # printf "Look's like you already create a swap, good for you"
+# fi
+
+if [  $memory_total -lt 8000000 ]; then  # < 8GB
+    mkdir "$swap_path"
+	dd if=/dev/zero of="$swap_path" bs=1M count="$swap_size" status=progress
+    chmod 600 "$swap_file"
+    # chown root "$swap_file"
+    mkswap "$swap_file"
+    swapon "$swap_file"
+    printf "$swap_file\tnone\tswap\tdefaults\t0\t0" >> /mnt/etc/fstab
+fi
+#+end_src
+
+** Reboot
+
+#+begin_src shell
+umount -R "$mount_point"
+reboot
+#+end_src
+

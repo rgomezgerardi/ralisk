@@ -1,0 +1,22 @@
+#+TITLE: Ralisk
+#+AUTHOR: Ricardo Gomez
+#+EMAIL: rgomezgerardi@gmail.com
+
+
+Ralisk it's an [[https://archlinux.org][Arch Linux]] installation script design to be fast and simple.
+
+For doing that ralisk install and configure the minimum elements necessarys to have a functional OS, that means that you will get almost nothing at all, internet access, vi, and [[file:./TANGLE.org][some other stuff]], but escencilly a black screen. You can change this and some other stuff by modifying the [[file:./config][config]] and [[file:./packages][packages]] files.
+
+* Obtaing
+
+#+begin_src shell
+curl -sLO https://raw.githubusercontent.com/rgomezgerardi/ralisk/main/ralisk | bash
+#+end_src
+
+* Credit
+Inspired by pico-dev/alis and codigocristo/arcris, so if you are searching for arch linux installation script make sure to take a look at those.
+
+* Contact
+
+[[https://rgomezgerardi.cf][Website]] 
+[[https://mail.google.com/mail/?view=cm&to=rgomezgerardi@gmail.com&su=Ralisk+-+][Gmail]]
