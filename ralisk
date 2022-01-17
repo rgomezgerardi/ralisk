@@ -20,7 +20,7 @@ swap_size=1024
 swap_path="/mnt/opt/swap"
 swap_file="/mnt/opt/swap/swapfile"
 
-if ! [ -d "$dir/$folder" ]; then
+if ! [ "$(basename -- $dir)" = "$folder" ]; then
 	mkdir --parents "$folder" | exit 1
 	curl -sL 'https://gitlab.com/rgomezgerardi/ralisk/-/archive/main/ralisk-main.tar.gz' | tar --extract --gzip --directory "$folder" --strip-components 1 --file -
 	# chmod +x "$dir/ralisk"
