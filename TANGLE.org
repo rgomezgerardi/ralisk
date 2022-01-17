@@ -3,7 +3,6 @@
 #+EMAIL: rgomezgerardi@gmail.com
 #+PROPERTY: header-args :tangle ralisk :tangle-mode (identity #o744) :noweb strip-export :cache yes :shebang "#!/usr/bin/env bash"
 
-
 * Variables
 
 #+begin_src shell
@@ -32,8 +31,8 @@ swap_file="/mnt/opt/swap/swapfile"
 * Download 
   
 #+begin_src shell
-if ! [ -d "../$folder" ]; then
-	mkdir --parents "$folder" 
+if ! [ -d "$dir/$folder" ]; then
+	mkdir --parents "$folder" | exit 1
 	curl -sL 'https://gitlab.com/rgomezgerardi/ralisk/-/archive/main/ralisk-main.tar.gz' | tar --extract --gzip --directory "$folder" --strip-components 1 --file -
 	# chmod +x "$dir/ralisk"
 	echo "ralisk downloaded"

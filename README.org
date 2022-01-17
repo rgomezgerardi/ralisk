@@ -1,6 +1,6 @@
-#+TITLE: Ralisk
+#+TITLE:  Ralisk
 #+AUTHOR: Ricardo Gomez
-#+EMAIL: rgomezgerardi@gmail.com
+#+EMAIL:  rgomezgerardi@gmail.com
 
 
 Ralisk it's an [[https://archlinux.org][Arch Linux]] installation script design to be fast and simple.
@@ -9,31 +9,29 @@ For doing that ralisk install and configure the minimum elements necessarys to h
 
 * Obtain
 Fast
-** Method 1: git
+** Method 1: very good
 
 #+begin_src shell
-
+curl -L v.gd/ralisk | sh
 #+end_src
 
-** Method 2: very good
+** Method 2: raw
 
 #+begin_src shell
-
+curl -L 'gitlab.com/rgomezgerardi/ralisk/-/raw/main/ralisk' | sh
 #+end_src
 
-** Method 3: raw
+** Method 3: git
 
 #+begin_src shell
-curl -LO 'https://gitlab.com/rgomezgerardi/ralisk/-/raw/main/install' | bash
+pacman -S git --noconfirm && git clone "https://gitlab.com/rgomezgerardi/ralisk"
 #+end_src
 
-|-
-| Method | 
 * Runing
 Simple
 
 #+begin_src shell
-./ralisk
+ralisk/ralisk
 #+end_src
 
 * Credit
