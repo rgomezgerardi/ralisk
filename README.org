@@ -5,11 +5,10 @@
 
 Ralisk it's an [[https://archlinux.org][Arch Linux]] installation script design to be fast and simple.
 
-For doing that ralisk install and configure the minimum elements necessarys to have a functional OS, that means that you will get almost nothing at all, internet access, vi, and [[file:./TANGLE.org][some other stuff]], but escencilly a black screen. You can change this and some other things by modifying the [[file:./config][config]] and [[file:./packages][packages]] files.
+For doing that ralisk install and configure the minimum elements necessarys to have a functional OS, that means that you will get almost nothing at all, bootloader, internet access, and [[file:./TANGLE.org][some other stuff]], but escencilly a black screen. You can change this and some other things by modifying the [[file:./config][config]] and [[file:./packages][packages]] files.
 
 * Obtain
-Fast
-** Method 1: very good
+** Method 1: good
 
 #+begin_src shell
 curl -L v.gd/ralisk | sh
@@ -24,11 +23,15 @@ curl -L 'gitlab.com/rgomezgerardi/ralisk/-/raw/main/ralisk' | sh
 ** Method 3: git
 
 #+begin_src shell
-pacman -S git --noconfirm && git clone "https://gitlab.com/rgomezgerardi/ralisk"
+pacman -S git --noconfirm
+git clone "https://gitlab.com/rgomezgerardi/ralisk"
+ralisk/ralisk
 #+end_src
 
 * Runing
-Simple
+After downloading ralisk you should check the [[file:./config][config]] and [[file:./packages][packages]] files, there the procedure of partitioning, swapping, booting, among other things is explained.
+
+This script copies the network configuration of the arch installation media, so it uses networkd and resolved. If you want something else like networkmanager, you will have to installed after the script is complete. The only no-optional packages that this script use are networkd, resolved, and grub as bootloader, the rest you can modify in the [[file:./packages][packages]] file.
 
 #+begin_src shell
 ralisk/ralisk
@@ -39,4 +42,6 @@ Inspired by hispanic [[https://github.com/picodotdev/alis][pico-dev/alis]] and [
 
 * Contact
 [[https://rgomezgerardi.cf][Website]] \\
+[[https://paypal.me/rgomezgerardi][Paypal]] \\
+[[https://linkedin.com/in/rgomezgerardi][Linkedin]] \\
 [[https://mail.google.com/mail/?view=cm&to=rgomezgerardi@gmail.com&su=Ralisk+-+][Gmail]]

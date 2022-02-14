@@ -1,111 +1,173 @@
 #!/usr/bin/env bash
-dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
-folder="ralisk"
-disk="/dev/sda"
-root="/dev/sda4"
-mount_point="/mnt"
-# reflector -a 48 -c $iso -f 5 -l 20 --sort rate --save /etc/pacman.d/mirrorlist
-reflector_command="reflector --latest 20 --sort rate /etc/pacman.d/mirror"
-region="America"
-city="Caracas"
-locale="en_US.UTF-8"
-keymap="de-latin1"
-hostname="arch"
-permanent_ip="127.0.1.1"
-domain="localdomain"
-boot_directory="/boot/grub"
-# memory_check_command=$(swapon --show)
-memory_total=$(awk '/MemTotal/{print $2}' /proc/meminfo)
-swap_size=1024
-swap_path="/mnt/opt/swap"
-swap_file="/mnt/opt/swap/swapfile"
+# set -x  # show commands
+set -e  # exit when any command fails
+# trap 'echo Line ${LINENO}: "\"${BASH_COMMAND}\" command fail with exit code $?."' err
 
-if ! [ "$(basename -- $dir)" = "$folder" ]; then
-	mkdir --parents "$folder" | exit 1
+dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" > /dev/null && pwd)"
+regex='s:\s*#.*$:: ; /^\s*$/d'
+folder="ralisk"
+
+source <(sed "$regex" "$dir/config")
+
+echo "$dir"
+if ! [ -r "$dir/packages" -a -r "$dir/config" ]; then
+	printf "\033[1;37mDownloading...\033[0m\n"
+
+	mkdir --parents "$folder"
 	curl -sL 'https://gitlab.com/rgomezgerardi/ralisk/-/archive/main/ralisk-main.tar.gz' | tar --extract --gzip --directory "$folder" --strip-components 1 --file -
-	# chmod +x "$dir/ralisk"
-	echo "ralisk downloaded"
+	printf "Ralisk downloaded successfully !"
 	exit 0
 fi
 
-read -p "Partition Number: " partition_number
-read -p "Partition Size: " partition_size
-parted_command="parted -s "$disk" -- rm $partition_number mkpart primary -$partition_size -1s set 4 boot on"
-"$parted_command"
+printf "\033[1;37mPartitioning...\033[0m\n"
 
-mkfs.ext4 "$root"
+disk_size=`parted $disk unit Mib print | grep -P "Disk (/[\w\d]+)+: \d+MiB" | awk '{print $3}' | sed 's:MiB::'`
+last_part=`parted $disk unit MiB print | sed -n 'x;$p' | awk '{print $1}'`
 
-mount "$root" "$mount_point"
+printf "\033[0;31mWARNING !!!\033[0m\n"
+while true ; do read -eN 1 -p "Are you sure you want to partitioning the disk? [y/n]: "
+	case $REPLY in 
+		y|Y) : ; break ;;
+		n|N) exit ; break ;;
+	esac
+done
 
-# timedatectl set-ntp true
+if [ $last_part = 'Number' ]; then
+	printf "No partitions in disk\n"
 
-sed -i 's/#Color/Color/' /etc/pacman.conf  # Enable color
-sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf  # Enable parallel downloads
-sed -i "/\[multilib\]/,/Include/"'s/^#//' /etc/pacman.conf  # Enable multilib
+	root_part=1
 
-# Backup of mirror list
-cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.bak
-cp /mnt/etc/pacman.d/mirrorlist /mnt/etc/pacman.d/mirrorlist.bak
+	if [ $root_size -gt 0 -a $root_size -lt $disk_size ]; then
+		printf "creating partition with size ${root_size}MiB\n"
+		parted -s "$disk" mkpart primary 0% ${root_size}MiB
+	else
+		printf "creating partition with the size of the hole disk\n"
+		parted -s "$disk" -- mkpart primary 0% -1s
+	fi
+else
+	printf "Disk not empty\n"
+	if [ $root_part -gt 0 -a $root_part -lt $last_part ]; then
+		printf "using partition number $root_part\n"
 
-# Update the mirror list
-"$reflector_command"
+		root_last_size=`parted $disk unit MiB print | grep "^\s$root_part\s" | awk '{print $4}' | sed 's:MiB::'`
+		root_type=`parted $disk unit MiB print | grep "^\s$root_part\s" | awk '{print $5}'`
+		root_start=`parted $disk unit MiB print | grep "^\s$root_part\s" | awk '{print $2}' | sed 's:MiB::'`
+		root_end=`parted $disk unit MiB print | grep "^\s$root_part\s" | awk '{print $3}' | sed 's:MiB::'`
 
-# Copy new mirror list to file system
-cp /etc/pacman.d/mirrorlist /mnt/etc/pacman.d/mirrorlist
+		parted -s "$disk" rm $root_part
 
-ln -sf "$mount_point/usr/share/zoneinfo/$region/$city" "$mount_point/etc/localtime"
-arch-chroot "$mount_point" hwclock --systohc
+		if [ $root_size -gt 0 -a $root_size -lt $root_last_size ]; then
+			printf "creating partition with size ${root_size}MiB\n"
+			parted -s "$disk" mkpart $root_type ${root_start}MiB $(($root_start+$root_size))MiB
+		else
+			printf "creating partition in the same position with the previous size\n"
+			parted -s "$disk" mkpart $root_type ${root_start}MiB ${root_end}MiB
+		fi
+	else
+		printf "using last partition in disk\n"
 
-sed -i 's/^#$locale/$locale/' "$mount_point/etc/locale.gen"
-arch-chroot "$mount_point" locale-gen
-printf "LANG=$locale" >> "$mount_point/etc/locale.conf"
-printf "KEYMAP=$keymap" >> "$mount_point/etc/vconsole.conf"
+		root_part=$last_part
+		root_last_size=`parted $disk unit MiB print | grep "^\s$root_part\s" | awk '{print $4}' | sed 's:MiB::'`
+		root_type=`parted $disk unit MiB print | grep "^\s$root_part\s" | awk '{print $5}'`
+		root_start=`parted $disk unit MiB print | grep "^\s$root_part\s" | awk '{print $2}' | sed 's:MiB::'`
 
-printf "$hostname" >> "$mount_point/etc/hostname"
+		parted -s "$disk" rm $root_part
 
-# Local hostname resolution
-printf "127.0.0.1\tlocalhost\n::1\t\tlocalhost\n$permanent_ip\t$hostname.$domain\t$hostname" >> /etc/hosts
-
-pkgs=(
-	base
-	linux
-	linux-firmware
-	# ntfs-3g
-	# os-prober
-	grub
-	# nano
-	# vim
-	# neovim
-	# networkmanager
-	# reflector
-	sudo
-	# archlinux-keyring
-	# wget
-	# libnewt
-	# dhclient
-)
-
-pacstrap "$mount_point" "${pkgs[@]}" --noconfirm --needed
-
-arch-chroot "$mount_point" systemctl enable NetworkManager
-# systemctl enable bluetooth
-
-arch-chroot "$mount_point" passwd
-
-arch-chroot "$mount_point" grub-install --target i386-pc --boot-directory "$boot_directory" "$disk"
-arch-chroot "$mount_point" grub-mkconfig -o /boot/grub/grub.cfg
-
-genfstab -U "$mount_point" >> "$mount_point/etc/fstab"
-
-if [  $memory_total -lt 8000000 ]; then  # Check for memory < 8GB
-    mkdir "$swap_path"
-	dd if=/dev/zero of="$swap_path" bs=1M count="$swap_size" status=progress
-    chmod 600 "$swap_file"
-    # chown root "$swap_file"
-    mkswap "$swap_file"
-    swapon "$swap_file"
-    printf "$swap_file\tnone\tswap\tdefaults\t0\t0" >> /mnt/etc/fstab
+		if [ $root_size -gt 0 -a $root_size -lt $root_last_size ]; then
+			printf "creating partition with size ${root_size}MiB\n"
+			parted -s "$disk" mkpart $root_type ${root_start}MiB $(($root_start+$root_size))MiB
+		else
+			printf "creating partition in the same position with the previous size\n"
+			parted -s "$disk" -- mkpart $root_type ${root_start}MiB -1s
+		fi
+	fi
 fi
 
-umount -R "$mount_point"
-reboot
+parted -s "$disk" set $root_part boot on
+
+printf "\033[1;37mFormatting...\033[0m\n"
+
+mkfs.ext4 -F "${disk}${root_part}" &> /dev/null
+
+printf "\033[1;37mMounting...\033[0m\n"
+
+mount "${disk}${root_part}" "$mount" > /dev/null
+
+printf "\033[1;37mSwap...\033[0m\n"
+
+# memory_check_command=$(swapon --show)
+memory_total=$(awk '/MemTotal/{print $2}' /proc/meminfo)
+
+if [  $memory_total -lt 8000000 ]; then  # Check for memory < 8GB
+    mkdir -p "${mount}${swap_file%/*}"
+	dd if=/dev/zero of="${mount}${swap_file}" bs=1M count="$swap_size" status=none  # bs=1MiB
+    chmod 600 "${mount}${swap_file}"
+    mkswap "${mount}${swap_file}" > /dev/null
+    swapon "${mount}${swap_file}"
+fi
+
+printf "\033[1;37mPackages...\033[0m\n"
+
+mapfile -t pkgs < <(sed "$regex" "$dir/packages")
+pacstrap "$mount" "${pkgs[@]}"  # -c -U
+
+printf "\033[1;37mTime...\033[0m\n"
+
+timedatectl set-ntp true
+ln -sf "$mount/usr/share/zoneinfo/$region/$city" "$mount/etc/localtime"
+arch-chroot "$mount" hwclock --systohc
+
+printf "\033[1;37mLocalization...\033[0m\n"
+
+sed -i "s/^#$locale/$locale/" "$mount/etc/locale.gen"
+arch-chroot "$mount" locale-gen > /dev/null
+printf "LANG=$locale" >> "$mount/etc/locale.conf"
+
+printf "\033[1;37mNetwork...\033[0m\n"
+
+# hostname
+printf "$hostname" >> "$mount/etc/hostname"
+printf "127.0.0.1\tlocalhost\n::1\t\tlocalhost\n$permanent_ip\t$hostname.$domain\t$hostname" >> "$mount/etc/hosts"
+
+# networkd
+arch-chroot "$mount" systemctl -q enable systemd-networkd
+cp -r /etc/systemd/network "$mount/etc/systemd"
+cp -r /etc/systemd/system/systemd-networkd-wait-online.service.d "$mount/etc/systemd/system"
+
+# resolved
+arch-chroot "$mount" systemctl -q enable systemd-resolved
+ln -sf /run/systemd/resolve/stub-resolv.conf "$mount/etc/resolv.conf"
+
+# iwd
+if arch-chroot "$mount" bash -c 'command -v iwctl > /dev/null'; then
+	arch-chroot "$mount" systemctl -q enable iwd
+	cp -r /var/lib/iwd "$mount/var/lib/iwd"
+	cp -r /etc/iwd "$mount/etc/iwd"
+fi
+
+printf "\033[1;37mBoot...\033[0m\n"
+
+grub-install --target i386-pc --boot-directory "$mount/$boot" "$disk" &> /dev/null
+sed -i 's/#GRUB_DISABLE_OS_PROBER=false/GRUB_DISABLE_OS_PROBER=true/' "$mount/etc/default/grub"
+arch-chroot "$mount" grub-mkconfig -o "$boot/grub/grub.cfg" &> /dev/null
+
+printf "\033[1;37mPassword...\033[0m\n"
+
+while : ; do
+	echo
+arch-chroot "$mount" passwd && break; done
+
+printf "\033[1;37mFstab...\033[0m\n"
+
+genfstab -U "$mount" >> "$mount/etc/fstab"
+
+while true ; do read -eN 1 -p "Do you wanna reboot? [y/n]: "
+	case $REPLY in 
+		y|Y)
+			swapoff "${mount}/$swap_file"
+			umount -R "$mount"
+			reboot
+			break ;;
+		n|N) : ; break ;;
+	esac
+done

@@ -1,0 +1,69 @@
+# ================================
+# ============ System ============
+# ================================ 
+# Select mount point folder
+mount="/mnt"
+
+# Select the disk, if the disk does't not exit use the first disk found
+disk="/dev/sda"
+
+
+# ================================
+# ============= Root =============
+# ================================ 
+# Select root partition number.
+# if the disk is empty ignore this variable and create a new primary partition
+# if the disk has a partition with that number, then
+#   use that partition as the root,
+# if not, then
+#   use the last partition found as the root.
+root_part=0
+
+# Size of the root partition in MiB
+# if the size is zero, or is lower than the size of the disk 
+# then use the size of the hole disk 
+# if the size is zero, or is lower than the size of the root_part
+# then use the actual size of root_part
+root_size=0
+
+
+# ================================
+# ============= Swap =============
+# ================================ 
+# Create a swap
+swap_type=file  # none | file | part
+
+# Size of the swap in MiB
+swap_size=1024
+
+# Select swap partition number, if the disk has a partition with
+# that number and his size is larger than the desired size then
+# use that partition as the swap, else create a new partition.
+swap_part=0
+
+# Select swap file
+swap_file="/opt/swap/swapfile"
+
+
+# ================================
+# ============= Boot =============
+# ================================ 
+# Select bootloader folder
+boot="/boot"
+
+
+# ================================
+# ========= Localization =========
+# ================================ 
+region="America"
+city="Caracas"
+locale="en_US.UTF-8"
+keymap="de-latin1"
+
+
+# ================================
+# =========== Network ============
+# ================================ 
+hostname="arch"
+permanent_ip="127.0.1.1"
+domain="localdomain"

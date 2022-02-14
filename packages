@@ -1,0 +1,29 @@
+# Packages
+
+base
+#sudo
+#reflector
+#wget
+
+# Kernel
+linux
+linux-firmware
+#linux-zen
+#linux-zen-firmware
+
+# Network
+systemd-resolvconf
+#iwd
+#networkmanager 
+
+# Bootloader
+grub
+ntfs-3g  # Windows Detection
+os-prober
+
+# Editor
+#nano
+#vim
+#neovim
+#emacs
+
