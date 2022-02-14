@@ -4,12 +4,9 @@ set -e  # exit when any command fails
 # trap 'echo Line ${LINENO}: "\"${BASH_COMMAND}\" command fail with exit code $?."' err
 
 dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" > /dev/null && pwd)"
-regex='s:\s*#.*$:: ; /^\s*$/d'
 folder="ralisk"
+regex='s:\s*#.*$:: ; /^\s*$/d'
 
-source <(sed "$regex" "$dir/config")
-
-echo "$dir"
 if ! [ -r "$dir/packages" -a -r "$dir/config" ]; then
 	printf "\033[1;37mDownloading...\033[0m\n"
 
@@ -17,6 +14,8 @@ if ! [ -r "$dir/packages" -a -r "$dir/config" ]; then
 	curl -sL 'https://gitlab.com/rgomezgerardi/ralisk/-/archive/main/ralisk-main.tar.gz' | tar --extract --gzip --directory "$folder" --strip-components 1 --file -
 	printf "Ralisk downloaded successfully !"
 	exit 0
+else
+	source <(sed "$regex" "$dir/config")
 fi
 
 printf "\033[1;37mPartitioning...\033[0m\n"
@@ -33,21 +32,21 @@ while true ; do read -eN 1 -p "Are you sure you want to partitioning the disk? [
 done
 
 if [ $last_part = 'Number' ]; then
-	printf "No partitions in disk\n"
+	# printf "No partitions in disk\n"
 
 	root_part=1
 
 	if [ $root_size -gt 0 -a $root_size -lt $disk_size ]; then
-		printf "creating partition with size ${root_size}MiB\n"
+		# printf "creating partition with size ${root_size}MiB\n"
 		parted -s "$disk" mkpart primary 0% ${root_size}MiB
 	else
-		printf "creating partition with the size of the hole disk\n"
+		# printf "creating partition with the size of the hole disk\n"
 		parted -s "$disk" -- mkpart primary 0% -1s
 	fi
 else
-	printf "Disk not empty\n"
+	# printf "Disk not empty\n"
 	if [ $root_part -gt 0 -a $root_part -lt $last_part ]; then
-		printf "using partition number $root_part\n"
+		# printf "using partition number $root_part\n"
 
 		root_last_size=`parted $disk unit MiB print | grep "^\s$root_part\s" | awk '{print $4}' | sed 's:MiB::'`
 		root_type=`parted $disk unit MiB print | grep "^\s$root_part\s" | awk '{print $5}'`
@@ -57,14 +56,14 @@ else
 		parted -s "$disk" rm $root_part
 
 		if [ $root_size -gt 0 -a $root_size -lt $root_last_size ]; then
-			printf "creating partition with size ${root_size}MiB\n"
+			# printf "creating partition with size ${root_size}MiB\n"
 			parted -s "$disk" mkpart $root_type ${root_start}MiB $(($root_start+$root_size))MiB
 		else
-			printf "creating partition in the same position with the previous size\n"
+			# printf "creating partition in the same position with the previous size\n"
 			parted -s "$disk" mkpart $root_type ${root_start}MiB ${root_end}MiB
 		fi
 	else
-		printf "using last partition in disk\n"
+		# printf "using last partition in disk\n"
 
 		root_part=$last_part
 		root_last_size=`parted $disk unit MiB print | grep "^\s$root_part\s" | awk '{print $4}' | sed 's:MiB::'`
@@ -74,10 +73,10 @@ else
 		parted -s "$disk" rm $root_part
 
 		if [ $root_size -gt 0 -a $root_size -lt $root_last_size ]; then
-			printf "creating partition with size ${root_size}MiB\n"
+			# printf "creating partition with size ${root_size}MiB\n"
 			parted -s "$disk" mkpart $root_type ${root_start}MiB $(($root_start+$root_size))MiB
 		else
-			printf "creating partition in the same position with the previous size\n"
+			# printf "creating partition in the same position with the previous size\n"
 			parted -s "$disk" -- mkpart $root_type ${root_start}MiB -1s
 		fi
 	fi
@@ -93,7 +92,7 @@ printf "\033[1;37mMounting...\033[0m\n"
 
 mount "${disk}${root_part}" "$mount" > /dev/null
 
-printf "\033[1;37mSwap...\033[0m\n"
+printf "\033[1;37mSwapping...\033[0m\n"
 
 # memory_check_command=$(swapon --show)
 memory_total=$(awk '/MemTotal/{print $2}' /proc/meminfo)

@@ -41,7 +41,7 @@ ralisk/ralisk
 Inspired by hispanic [[https://github.com/picodotdev/alis][pico-dev/alis]] and [[https://github.com/CodigoCristo/arcris][codigocristo/arcris]] arch linux installation script's, so make sure to take a look at those.
 
 * Contact
-[[https://rgomezgerardi.cf][Website]] \\
-[[https://paypal.me/rgomezgerardi][Paypal]] \\
-[[https://linkedin.com/in/rgomezgerardi][Linkedin]] \\
+[[https://rgomezgerardi.cf][Website]]
+[[https://paypal.me/rgomezgerardi][Paypal]]
+[[https://linkedin.com/in/rgomezgerardi][Linkedin]]
 [[https://mail.google.com/mail/?view=cm&to=rgomezgerardi@gmail.com&su=Ralisk+-+][Gmail]]
